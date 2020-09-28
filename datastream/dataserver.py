@@ -31,10 +31,10 @@ class Datastream:
             data = np.load( path, self.data)
 
             if( data.shape[1] == self.num_channels):
-                print(f"Loaded samples: {data.shape[0]}")
+                print(f"ch {self.name} | Loaded samples: {data.shape[0]}")
                 self.data = data
             else:
-                print(f"Data wrong shape {data.shape}")
+                print(f"ch {self.name} | Data wrong shape {data.shape}")
         else:
             print(f"ch {self.name} | Not found {path}")
 
@@ -58,6 +58,7 @@ class Datastream:
         return batch
 
     def save(self, dataroot):
+        print(f"ch {self.name} | Saving data ({self.data.shape[0]})")
         path = f"data_{self.name}.npy"
         np.save( os.path.join(dataroot, path), self.data)
 

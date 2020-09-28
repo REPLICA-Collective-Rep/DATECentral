@@ -26,20 +26,20 @@ SUITS = [ 1, 2, 3 ]
 def main():
     running = True
     #sources = ["fake", "load"]
-    sources = ["osc"]
+    sources = ["load", "osc"]
     
     name = "test"
     dataroot = os.path.join("data", name)
     dataserver = ds.Dataserver(SEQ_LEN , N_FEATURES, SUITS, sources, dataroot = dataroot)
 
-    autosave_interval = 60 * 2
+    autosave_interval = 60 * 1
 
     last_save_time = time.time()
     while(running):
         try:
             dataserver.update()
 
-            if( (time.time() - last_save_time)  >= autosave_interval):
+            if( (time.time() - last_save_time)  >= autosave_interval):#
                 dataserver.save()
                 last_save_time = time.time()
 
@@ -50,8 +50,7 @@ def main():
             running = False
 
 
-    dataserver.save()
-   
+    dataserver.save()   
     dataserver.close()
 
     print("Done")
