@@ -3,48 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-# class LSTMAutoencoder(nn.Module):
 
-#     def __init__(self, seq_len, n_features, z_dim, num_layers = 2):
-#         super(LSTMAutoencoder, self).__init__()
-
-#         self.seq_len    = seq_len
-#         self.n_features = n_features
-#         self.z_dim      = z_dim
-#         self.num_layers = num_layers
-
-#         self.encoder0 = nn.LSTM(
-#             input_s1ize  = n_features,
-#             hidden_size  = n_features,
-#             num_layers   = 1
-#         )
-
-#         self.encoder1 = nn.LSTM(
-#             input_s1ize  = n_features,
-#             hidden_size  = z_dim,
-#             num_layers   = 1,
-#             dropout      = 0.8
-#         )
-
-
-#     def forward(self, x):
-#         c0 = torch.randn(self.num_layers, x.shape[1], self.z_dim)
-#         h0 = torch.randn(self.num_layers, x.shape[1], self.z_dim)
-
-#         z, (h1, c1) = self.encoder(x, (h0, c0))
-
-#         z = z[-1:,:,:]
-#         z_repeat = z.expand((self.seq_len,-1,-1))
-
-
-
-#         c1 = torch.randn(self.num_layers, x.shape[1], self.n_features)
-#         h1 = torch.randn(self.num_layers, x.shape[1], self.n_features)
-#         x, (h2, c2) = self.decoder(z_repeat, (h1, c1))
-
-#         print(h2.shape)
-
-#         return x, z
 
 class LSTMAutoencoder(nn.Module):
     def __init__(self, seq_len, n_features, embedding_dim):
@@ -79,11 +38,15 @@ class Encoder(nn.Module):
     self.embedding_dim = embedding_dim
     self.hidden_dim    = 2 * embedding_dim
 
+    dropout = 0.8
+    if layers == 1:
+      dropout = 0.0
+
     self.rnn1 = nn.LSTM(
       input_size  = n_features,
       hidden_size = self.hidden_dim,
       num_layers  = layers,
-      dropout      = 0.8
+      dropout     = dropout
     )
 
     self.rnn2 = nn.LSTM(
@@ -127,12 +90,15 @@ class Decoder(nn.Module):
     self.embedding_dim = embedding_dim
     self.hidden_dim    = 2 * embedding_dim
 
+    dropout = 0.8
+    if layers == 1:
+      dropout = 0.0
 
     self.rnn1 = nn.LSTM(
       input_size   = embedding_dim,
       hidden_size  = embedding_dim,
       num_layers   = layers,
-      dropout      = 0.8
+      dropout      = dropout
     )
 
     self.rnn2 = nn.LSTM(

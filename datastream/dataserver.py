@@ -8,145 +8,97 @@ import time
 import random
 import os
 import re
+import datetime
 
 import threading
 
 HOST = "239.200.200.200"
 PORT = 51555
 
-MAX_BUFFER = 100
-
 class Datastream:
 
-    def __init__(self, name, seq_length, num_channels, undersample):
-        self.itr          = 0
-        self.name         = name
-        self.seq_length   = seq_length
+    def __init__(self, name, num_channels):
+        self.itr = 0
+        self.name = name
         self.num_channels = num_channels
-        self.undersample  = int(undersample)
-        self.buffer_size  = seq_length * num_channels
-        self.newSequences = []
-        self.sequences    = []
+        self.data     = np.empty((0,num_channels), np.float32)
+        self.metadata = []
+
+    def load_from_file(self, dataroot):
+        path = os.path.join(dataroot, f"data_{self.name}.npy")
+
+        if(os.path.exists(path)):
+            data = np.load( path, self.data)
+
+            if( data.shape[1] == self.num_channels):
+                print(f"Loaded samples: {data.shape[0]}")
+                self.data = data
+            else:
+                print(f"Data wrong shape {data.shape}")
+        else:
+            print(f"ch {self.name} | Not found {path}")
 
 
-    def load_from_file(self, path):
-        print(path)
-        with open(path, "r") as f:
-            d = f.read()
+    def get_batch(self, seq_len, batch_size):
 
-
-
-        expr1 = re.compile(r"(?:\[(.*?)\])")
-        matches = expr1.finditer(d)
-        sequences = []
-        for i, match in enumerate(matches):
-            
-            seq_str = match.group(1)
-
-            expr2 = re.compile(r"(?:(\d\.\d*)(?:, )?)")
-            matches2 = expr2.finditer(seq_str)
-            
-            sequence = tuple( float(m.group(1)) for m in matches2)
-            sequences.append(sequence)
-            print("{} -> {}".format(i, len(sequence)))
-
-
-        self.sequences = np.asarray(sequences)
-
-    def get_batch(self, batch_size):
-        if(len(self.sequences) + len(self.newSequences) < (batch_size + 1)):
+        if(self.data.shape[0] < seq_len):
+            print(f"ch {self.name} | Not enough data... {self.data.shape[0]}")
             return None
 
-        batch = self.newSequences[0:batch_size]
+        batch = np.empty((seq_len, 0, self.num_channels), np.float32)
+        for i in range(batch_size):
 
-        if(batch != [] ):
-            if( len(batch[-1]) < self.buffer_size):
-                batch = self.newSequences[0:len(batch) - 1]
+            srt = random.randint(0, self.data.shape[0] - seq_len )
+            end = srt + seq_len
+            sample = self.data[srt:end, :]
+            sample = sample.reshape((seq_len, 1, self.num_channels))
 
-        paddingNum = batch_size - len(batch)
-        padding = random.choices(self.sequences, k = paddingNum)
-        
-        if(any(batch)):
-            self.sequences.extend(batch) 
-            self.newSequences = self.newSequences[len(batch):-1] 
-        batch.extend(padding)
-
-        batch = np.asarray(batch, dtype=object)
-        batch = np.reshape( batch, (batch_size, self.seq_length, self.num_channels))
-        batch = np.swapaxes(batch, 0, 1)
-
-        #print("Get {} | New: {} Old: {}".format(self.name, len(self.newSequences), len(self.sequences)))
+            batch = np.append(batch, sample, axis=1)
 
         return batch
 
+    def save(self, dataroot):
+        path = f"data_{self.name}.npy"
+        np.save( os.path.join(dataroot, path), self.data)
 
-    def save(self):
-        file = "data/suit_{}.dump".format(self.name)
-        with open(file,  "a+") as f:
-            for s in self.sequences:
-                f.write("{}".format(s))
+        path_meta = f"meta_data_{self.name}.txt"
 
-        self.sequences = []
-
+        with open(os.path.join(dataroot, path_meta), "w" ) as f:
+            for d in self.metadata:
+                f.write(f"{d}\n")
 
     def add_sample(self, data):
-        self.itr += 1
-
-        # if(self.itr % self.undersample != 0):
-        #     return
-
-        assert(len(data) == self.num_channels)
-
-        if(len(self.newSequences) > 0):
-            if(len(self.newSequences[-1]) < self.buffer_size):
-                self.newSequences[-1].extend(list(data))
-            else:
-                self.newSequences.append(list(data))
-        else:
-            self.newSequences.append(list(data))
-
-        if(len(self.newSequences) > MAX_BUFFER):
-            self.newSequences.extend(self.newSequences[0])
-            self.newSequences.remove(0)
-            print("Buffer overflow")
-
-
-        if(len(self.sequences) > 10000):
-            self.save()
-
-        #print("Add {} | New: {} Old: {}".format(self.name, len(self.newSequences), len(self.sequences)))
-
-        
-
-
+        data = np.array(data).reshape((1, 8))
+        self.data = np.append(self.data, np.array(data), axis = 0)
+        self.metadata.append(datetime.datetime.utcnow())
 
 
 class Dataserver:
 
-    def __init__(self, seq_length, num_channels, suits, clients, undersample = 1, fake = False):
+    def __init__(self, seq_length, num_channels, suits, sources, clients = [], dataroot="data/default"):
         self.num_channels = num_channels
-        self.fake = fake        
         self.suits = suits
-
-        if(not fake):
-            osc_startup()
-            self.setup_clients(clients)
-            self.setup_server()
-        else:
-            self.fake_running = True
-            self.fake_thread =  threading.Thread(target=self.fake_loop)
-            self.fake_thread.start()
+        self.sources = sources
+        self.dataroot = dataroot
 
         self.datastreams = {}
         for suit in suits:
-            self.datastreams[suit] = Datastream(suit, seq_length, num_channels, undersample)
-    
-    def load(self, path):
+            self.datastreams[suit] = Datastream(suit, num_channels)
 
-        for suit in self.suits:
+        if('osc' in self.sources):
+            osc_startup()
+            self.setup_clients(clients)
+            self.setup_server()
 
-            path = os.path.join(path, f"suit_{suit}.dump")
-            self.datastreams[suit].load_from_file(path)
+        if('load' in self.sources):
+            for suit in self.suits:
+                self.datastreams[suit].load_from_file(dataroot)
+
+        if('fake' in self.sources):
+            self.fake_running = True
+            print("Starting fake thread")
+            self.fake_thread = threading.Thread(target=self.fake_loop)
+            self.fake_thread.start()
 
     def setup_clients(self, clients):
         self.clients = []
@@ -155,60 +107,58 @@ class Dataserver:
             osc_udp_client(client["host"], client["port"], name)
             self.clients.append(name)
 
-
     def update(self):
-        if not self.fake:
+        if('osc' in self.sources):
             osc_process()
-        else:
-            pass
-
 
     def fake_loop(self):
-        while( self.fake_running ):
-            time.sleep( 20e-3)
+        while(self.fake_running):
+            time.sleep(20e-3)
 
             t = time.time() * 10
             for suit in self.suits:
                 address = "/p{}/sensor".format(suit)
 
-                data = np.abs(np.sin(np.arange(self.num_channels) + t )) + (np.random.randn(self.num_channels) - 0.5 ) * 0.1
+                data = np.abs(np.sin(np.arange(self.num_channels) + t)) + \
+                    (np.random.randn(self.num_channels) - 0.5) * 0.1
                 #data = np.arange(self.num_channels)/ self.num_channels + (np.random.randn(self.num_channels) - 0.5 ) * 0.1
 
                 self.recieve_data(address, data)
 
-    def get_batch(self, suit, batch_size):
+    def get_batch(self, suit, seq_length,  batch_size):
 
         if(suit in self.datastreams):
-            return self.datastreams[suit].get_batch(batch_size)
+            return self.datastreams[suit].get_batch(seq_length, batch_size)
         else:
             print("Suit not found")
             return None
 
-
     def setup_server(self):
         osc_multicast_server(HOST, PORT, "bella_multicast")
         #osc_method("*", self.debug, argscheme=osm.OSCARG_ADDRESS + osm.OSCARG_DATA)
-        osc_method("/p?/sensor", self.recieve_data, argscheme=osm.OSCARG_ADDRESS + osm.OSCARG_DATA)
+        osc_method("/p?/sensor", self.recieve_data,
+                   argscheme=osm.OSCARG_ADDRESS + osm.OSCARG_DATA)
 
-
-    def send_data(self, 
-    data):
-        msg = oscbuildparse.OSCMessage("/test/me", ",sif", ["text", 672, 8.871])
+    def send_data(self,  data):
+        msg = oscbuildparse.OSCMessage(
+            "/test/me", ",sif", ["text", 672, 8.871])
         for client in self.clients:
             osc_send(msg, client)
 
-    def close(self):
-        if not self.fake:
-            
-            for suit in self.suits:
-                self.datastreams[suit].save()
+    def save(self):
+        os.makedirs(self.dataroot, exist_ok = True)
 
+        for suit in self.suits:
+            self.datastreams[suit].save(self.dataroot)
+
+    def close(self):
+        if('osc' in self.sources):
             osc_terminate()
-        else:
+
+        if('fake' in self.sources):
             self.fake_running = False
             self.fake_thread.join()
-            
-        
+
     def __del__(self):
         self.close()
 
@@ -220,10 +170,8 @@ class Dataserver:
             suit = int(address[2])
             assert(suit in self.suits)
         except Exception as e:
-            print("Could not parse {}".address)
-            print(e)
+            print("Could not parse {}\n{}".format(address, e))
             return
 
         #print("{} - {}".format(suit,  data))
         self.datastreams[suit].add_sample(data)
-
