@@ -6,6 +6,8 @@ from osc4py3 import oscbuildparse
 import numpy as np
 import time
 import random
+import os
+import re
 
 import threading
 
@@ -25,6 +27,31 @@ class Datastream:
         self.buffer_size  = seq_length * num_channels
         self.newSequences = []
         self.sequences    = []
+
+
+    def load_from_file(self, path):
+        print(path)
+        with open(path, "r") as f:
+            d = f.read()
+
+
+
+        expr1 = re.compile(r"(?:\[(.*?)\])")
+        matches = expr1.finditer(d)
+        sequences = []
+        for i, match in enumerate(matches):
+            
+            seq_str = match.group(1)
+
+            expr2 = re.compile(r"(?:(\d\.\d*)(?:, )?)")
+            matches2 = expr2.finditer(seq_str)
+            
+            sequence = tuple( float(m.group(1)) for m in matches2)
+            sequences.append(sequence)
+            print("{} -> {}".format(i, len(sequence)))
+
+
+        self.sequences = np.asarray(sequences)
 
     def get_batch(self, batch_size):
         if(len(self.sequences) + len(self.newSequences) < (batch_size + 1)):
@@ -113,7 +140,13 @@ class Dataserver:
         self.datastreams = {}
         for suit in suits:
             self.datastreams[suit] = Datastream(suit, seq_length, num_channels, undersample)
+    
+    def load(self, path):
 
+        for suit in self.suits:
+
+            path = os.path.join(path, f"suit_{suit}.dump")
+            self.datastreams[suit].load_from_file(path)
 
     def setup_clients(self, clients):
         self.clients = []

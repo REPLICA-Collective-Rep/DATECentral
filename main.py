@@ -10,9 +10,9 @@ import matplotlib.gridspec as gridspec
 
 
 
-SEQ_LEN      = 32
+SEQ_LEN      = 64
 N_FEATURES   = 8
-Z_DIM        = 16
+Z_DIM        = 32
 UNDER_SAMPLE = 1
 
 CLIENTS = [
@@ -81,9 +81,10 @@ def plot_graph(batch, output,losses, z ):
 
 def main():
     running = True
-    dataserver = ds.Dataserver(SEQ_LEN , N_FEATURES, SUITS, CLIENTS, fake = False)
+    dataserver = ds.Dataserver(SEQ_LEN , N_FEATURES, SUITS, CLIENTS, fake = True)
+    #dataserver.load("data")
 
-    
+
     #loss_function = nn.MSELoss(reduction='sum')
     loss_function = nn.SmoothL1Loss(reduction='sum')
 
@@ -96,9 +97,14 @@ def main():
     losses = {}
     for suit in SUITS:
         models[suit] = LSTMAutoencoder(SEQ_LEN, N_FEATURES, Z_DIM)
+        try:      
+            torch.load(models[suit].state_dict(), f"models/model_{suit}.pt")             
+        except Exception as e:
+            print(e)
+
         epoch[suit]  = 0
         losses[suit] = []
-        optimizers[suit] = optim.Adam(models[suit].parameters(), lr=1e-3)
+        optimizers[suit] = optim.Adam(models[suit].parameters(), lr=1e-1)
 
 
     while(running):
@@ -143,6 +149,12 @@ def main():
             print("Clossing on interupt")
             running = False
 
+    if input("Save model? (y/n):\n") == 'y':
+        for suit in SUITS:
+            try:      
+                torch.save(models[suit].state_dict(), f"models/model_{suit}.pt")      
+            except Exception as e:
+                print(e)
 
     dataserver.close()
     fig.clf()
