@@ -1,12 +1,11 @@
-import datastream as ds
-import torch
-import torch.nn as nn
-import torch.optim as optim
 import numpy as np
-from model import LSTMAutoencoder
-
-
 import os
+
+
+import datastream as ds
+from  model import Model
+
+from   torch.utils.tensorboard import SummaryWriter
 
 
 SEQ_LEN      = 64
@@ -78,45 +77,26 @@ SUITS = [ 1, 2, 3 ]
 #     plt.pause(0.0001)
 
 def main():
-    running = True
+
+    name = "session_1_pt"
+
+    dataroot  = os.path.join("data", name)
+    modelroot = os.path.join("models", name)
+
+
     #sources = ["fake", "load"]
-    sources = ["osc", "load"]
-
-    name = "test"
-    dataroot = os.path.join("data", name)
+    sources = ["load"]
     dataserver = ds.Dataserver(SEQ_LEN , N_FEATURES, SUITS, sources, clients = CLIENTS, dataroot = dataroot)
-    #dataserver.load("data")
 
-
-    #loss_function = nn.MSELoss(reduction='sum')
-    loss_function = nn.SmoothL1Loss(reduction='sum')
-
-    #loss_function = nn.L1Loss(reduction='mean')
-    #optimizer = optim.SGD(model.parameters(), lr=0.01)   
-    
-    optimizers = {}
-    models = {}
-    epoch  = {}
-    losses = {}
+    os.makedirs(modelroot, exist_ok = True) 
+    writer = SummaryWriter(log_dir = modelroot)
+    models = { }
     for suit in SUITS:
-        models[suit] = LSTMAutoencoder(SEQ_LEN, N_FEATURES, Z_DIM)
-
-        if(True):
-            model_path = f"models/model_{suit}.pt"
-            if(os.path.exists(model_path)):
-                checkpoint = torch.load(model_path) 
-                models[suit].load_state_dict(checkpoint)
-                models[suit].eval()
-
-            else:
-                print(f"No model to load {model_path}")
+        models[suit] = Model(suit, SEQ_LEN , N_FEATURES, Z_DIM, modelroot, False, writer)
 
 
-        epoch[suit]  = 0
-        losses[suit] = []
-        optimizers[suit] = optim.Adam(models[suit].parameters(), lr=1e-1)
 
-
+    running = True
     while(running):
         try:
 
@@ -126,28 +106,8 @@ def main():
                 batch = dataserver.get_batch(suit, SEQ_LEN ,  batch_size=5)
 
                 if(batch is not None):
-                    models[suit].train()
+                    models[suit].train_step(batch)
 
-                    batchT = torch.from_numpy(batch.astype(np.float32)).cuda()
-
-                    optimizers[suit].zero_grad()                   
-
-                    output, z = models[suit].forward(batchT)
-                    loss = loss_function( output, batchT)
-
-                    losses[suit].append(loss.item())
-
-                    
-                    loss.backward()
-                    optimizers[suit].step()
-
-                    z      = z.detach().cpu().numpy()
-                    output = output.detach().cpu().numpy()
-
-                    print("Epoc: {:04d}-{:02d} Loss: {}".format(epoch[suit], suit, loss))
-                    epoch[suit] += 1
-
-                
 
         except KeyboardInterrupt:
             
@@ -156,11 +116,7 @@ def main():
 
     if input("Save model? (y/n):\n") == 'y':
         for suit in SUITS:
-            try:      
-                models[suit].eval()
-                torch.save(models[suit].state_dict(), f"models/model_{suit}.pt")      
-            except Exception as e:
-                print(e)
+            models[suit].save(modelroot)
 
     if input("Save data? (y/n):\n") == 'y':
         dataserver.save()

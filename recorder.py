@@ -11,7 +11,6 @@ import time
 SEQ_LEN      = 64
 N_FEATURES   = 8
 Z_DIM        = 32
-UNDER_SAMPLE = 1
 
 CLIENTS = [
     {
