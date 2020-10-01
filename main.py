@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 import os
 
@@ -11,7 +12,6 @@ from   torch.utils.tensorboard import SummaryWriter
 SEQ_LEN      = 64
 N_FEATURES   = 8
 Z_DIM        = 32
-UNDER_SAMPLE = 1
 
 CLIENTS = [
     {
@@ -20,7 +20,6 @@ CLIENTS = [
     }
 ]
 
-SUITS = [ 1, 2, 3 ]
 
 # def setup_plot():
 #     plt.ion()
@@ -76,22 +75,23 @@ SUITS = [ 1, 2, 3 ]
 #     fig.canvas.draw()
 #     plt.pause(0.0001)
 
-def main():
+def main(args):
 
     name = "session_1_pt"
 
-    dataroot  = os.path.join("data", name)
-    modelroot = os.path.join("models", name)
-
+    dataroot  = args.dataroot
+    modelroot = args.modelroot
+    suits     = args.suits
+    sources   = args.sources
 
     #sources = ["fake", "load"]
-    sources = ["load"]
-    dataserver = ds.Dataserver(SEQ_LEN , N_FEATURES, SUITS, sources, clients = CLIENTS, dataroot = dataroot)
+    
+    dataserver = ds.Dataserver(SEQ_LEN , N_FEATURES, suits, sources, clients = CLIENTS, dataroot = dataroot)
 
     os.makedirs(modelroot, exist_ok = True) 
     writer = SummaryWriter(log_dir = modelroot)
     models = { }
-    for suit in SUITS:
+    for suit in suits:
         models[suit] = Model(suit, SEQ_LEN , N_FEATURES, Z_DIM, modelroot, False, writer)
 
 
@@ -102,7 +102,7 @@ def main():
 
             dataserver.update()
 
-            for suit in SUITS:
+            for suit in suits:
                 batch = dataserver.get_batch(suit, SEQ_LEN ,  batch_size=5)
 
                 if(batch is not None):
@@ -114,8 +114,8 @@ def main():
             print("Clossing on interupt")
             running = False
 
-    if input("Save model? (y/n):\n") == 'y':
-        for suit in SUITS:
+    if input("Save models? (y/n):\n") == 'y':
+        for suit in suits:
             models[suit].save(modelroot)
 
     if input("Save data? (y/n):\n") == 'y':
@@ -126,4 +126,16 @@ def main():
     print("Done")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='Process some integers.')
+
+    parser.add_argument('--dataroot', default="data/session_1_pt",
+                        help='Path to data')
+    parser.add_argument('--modelroot', default="models/session_1_pt",
+                        help='Path to model')
+    parser.add_argument('--sources', nargs='+', default=["load"],
+                        help='Data sources')
+    parser.add_argument('--suits', nargs='+', type=int, default=[1],
+                        help='Suits to train')
+    args = parser.parse_args()
+
+    main(args)
