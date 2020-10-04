@@ -22,17 +22,20 @@ class Datastream:
         self.name = name
         self.num_channels = num_channels
         self.data     = np.empty((0,num_channels), np.float32)
-        self.metadata = []
+        self.metadata = np.empty((0,1), np.int)
 
     def load_from_file(self, dataroot):
         path = os.path.join(dataroot, f"data_{self.name}.npy")
 
         if(os.path.exists(path)):
-            data = np.load( path, self.data)
+            buff     = np.load( path, self.data)
+            data     = buff[:,0:self.num_channels]
+            metadata = buff[:,self.num_channels:]
 
             if( data.shape[1] == self.num_channels):
                 print(f"ch {self.name} | Loaded samples: {data.shape[0]}")
                 self.data = data
+                self.metadata = metadata
             else:
                 print(f"ch {self.name} | Data wrong shape {data.shape}")
         else:
@@ -60,18 +63,26 @@ class Datastream:
     def save(self, dataroot):
         print(f"ch {self.name} | Saving data ({self.data.shape[0]})")
         path = f"data_{self.name}.npy"
-        np.save( os.path.join(dataroot, path), self.data)
 
-        path_meta = f"meta_data_{self.name}.txt"
 
-        with open(os.path.join(dataroot, path_meta), "w" ) as f:
-            for d in self.metadata:
-                f.write(f"{d}\n")
+        buff = np.append(self.data, self.metadata, axis = 1)
+        np.save( os.path.join(dataroot, path), buff)
+
+
 
     def add_sample(self, data):
-        data = np.array(data).reshape((1, 8))
-        self.data = np.append(self.data, np.array(data), axis = 0)
-        self.metadata.append(datetime.datetime.utcnow())
+        try:
+            buff          = np.array(data).reshape((1, self.num_channels + 1))
+            data     =     buff[0,:self.num_channels].reshape((1, self.num_channels))
+            metadata =     buff[0,self.num_channels].reshape((1,1))
+
+
+            self.data     = np.append(self.data, data, axis = 0)
+            self.metadata = np.append(self.metadata, metadata, axis = 0)
+        except Exception as e:
+            print(e)
+            raise e
+
 
 
 class Dataserver:
@@ -174,5 +185,5 @@ class Dataserver:
             print("Could not parse {}\n{}".format(address, e))
             return
 
-        #print("{} - {}".format(suit,  data))
+        print("{} - {}".format(suit,  data))
         self.datastreams[suit].add_sample(data)
