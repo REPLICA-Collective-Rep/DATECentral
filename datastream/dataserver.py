@@ -42,6 +42,17 @@ class Datastream:
             print(f"ch {self.name} | Not found {path}")
 
 
+    def get_sequence(self, index, seq_len):
+        output = np.zeros((seq_len, self.data.shape[1]), np.float32)
+        
+        srt = min(index, self.data.shape[0])
+        end = min(index+seq_len, self.data.shape[0])
+
+
+        output[0:,:] = self.data[srt:end,:]
+
+        return output
+
     def get_batch(self, seq_len, batch_size):
 
         if(self.data.shape[0] < seq_len):
@@ -136,8 +147,18 @@ class Dataserver:
                 #data = np.arange(self.num_channels)/ self.num_channels + (np.random.randn(self.num_channels) - 0.5 ) * 0.1
 
                 self.recieve_data(address, data)
+                
+    def get_size(self, suit):
+        return self.datastreams[suit].data.shape[0]
 
-    def get_batch(self, suit, seq_length,  batch_size):
+    def get_sequence(self, suit, index, seq_len):
+        if(suit in self.datastreams):
+            return self.datastreams[suit].get_sequence(index, seq_len)
+        else:
+            print("Suit not found")
+            return None
+
+    def get_batch(self, suit, seq_length,  batch_size, method="random"):
 
         if(suit in self.datastreams):
             return self.datastreams[suit].get_batch(seq_length, batch_size)

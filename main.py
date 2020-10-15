@@ -6,7 +6,7 @@ import os
 import datastream as ds
 from  model import Model
 
-from   torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
 
 SEQ_LEN      = 64
@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--dataroot', default="data/session_2",
                         help='Path to data')
-    parser.add_argument('--modelroot', default="models/session_2",
+    parser.add_argument('--modelroot', default="data/session_2",
                         help='Path to model')
     parser.add_argument('--sources', nargs='+', default=["load"],
                         help='Data sources')
