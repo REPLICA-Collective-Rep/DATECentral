@@ -17,12 +17,12 @@ PORT = 51555
 
 class Datastream:
 
-    def __init__(self, name, num_channels):
+    def __init__(self, performer, session_ids, num_channels):
         self.itr = 0
-        self.name = name
+        self.name = performer
+        self.session_ids = session_ids
         self.num_channels = num_channels
         self.data     = np.empty((0,num_channels), np.float32)
-        self.metadata = np.empty((0,1), np.int)
 
     def load_from_file(self, dataroot):
         path = os.path.join(dataroot, f"data_{self.name}.npy")
@@ -30,7 +30,6 @@ class Datastream:
         if(os.path.exists(path)):
             buff     = np.load( path, self.data)
             data     = buff[:,0:self.num_channels]
-            metadata = buff[:,self.num_channels:]
 
             if( data.shape[1] == self.num_channels):
                 print(f"ch {self.name} | Loaded samples: {data.shape[0]}")
@@ -47,7 +46,6 @@ class Datastream:
         
         srt = min(index, self.data.shape[0])
         end = min(index+seq_len, self.data.shape[0])
-
 
         output[0:,:] = self.data[srt:end,:]
 
@@ -98,32 +96,31 @@ class Datastream:
 
 class Dataserver:
 
-    def __init__(self, seq_length, num_channels, suits, sources, clients = [], dataroot="data/default"):
+    def __init__(self, session_ids, performers, seq_length, num_channels, dataroot="data/default", load=True):
         self.num_channels = num_channels
-        self.suits = suits
-        self.sources = sources
-        self.dataroot = dataroot
+        self.performers   = performers
+        self.session_ids  = session_ids
 
-        self.datastreams = {}
-        for suit in suits:
-            self.datastreams[suit] = Datastream(suit, num_channels)
+        self.dataroot     = dataroot
+
+        self.datastreams = { p : Datastream(p, session_ids, num_channels) for p in performers } 
 
         if('osc' in self.sources):
             osc_startup()
             self.setup_clients(clients)
             self.setup_server()
 
-        if('load' in self.sources):
-            for suit in self.suits:
-                self.datastreams[suit].load_from_file(dataroot)
+        if(load):
+            for p in self.performers:
+                self.datastreams[p].load_from_file(dataroot)
 
-        if('fake' in self.sources):
+        if( False ):
             self.fake_running = True
             print("Starting fake thread")
             self.fake_thread = threading.Thread(target=self.fake_loop)
             self.fake_thread.start()
 
-    def setup_clients(self, clients):
+    def set_clients(self, clients):
         self.clients = []
         for idx, client in enumerate(clients):
             name = "client_{:02d}".format(idx)
