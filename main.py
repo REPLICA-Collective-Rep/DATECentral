@@ -2,7 +2,6 @@ import argparse
 import numpy as np
 import os
 
-
 import datastream as ds
 from  model import Model
 
@@ -12,14 +11,6 @@ from torch.utils.tensorboard import SummaryWriter
 SEQ_LEN      = 64
 N_FEATURES   = 8
 Z_DIM        = 32
-
-CLIENTS = [
-    {
-        "host" : "localhost",
-        "port" : 45345
-    }
-]
-
 
 
 def main(args):
