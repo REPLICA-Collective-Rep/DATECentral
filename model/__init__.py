@@ -1,2 +1,2 @@
-from .model import Model
-from .lstm import LSTMAutoencoder
+from .modelrunner import Modelrunner
+

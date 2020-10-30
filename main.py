@@ -3,6 +3,7 @@ import zmq
 import time
 
 from dataserver import ZqmServer
+from model      import Modelrunner
 
 SEQ_LEN      = 64
 N_FEATURES   = 8
@@ -19,21 +20,25 @@ def main(args):
 
     #xpub_ip   = "inanna.local"
     #xpub_ip   = "0.0.0.0"
-    xpub_ip   = "192.168.8.118"
-    #xpub_ip   = "127.0.0.1"
-    
-    xpub_port = 5555
-    xpub_addr = f"tcp://{xpub_ip}:{xpub_port}"
+    #pub_ip   = "192.168.8.118"
+    pub_ip   = "127.0.0.1"    
+    pub_port = 5554
+    pub_addr = f"tcp://{pub_ip}:{pub_port}"
 
-    dataserver = ZqmServer(ctx, xpub_addr)
+    sub_ip   = "127.0.0.1"    
+    sub_port = 5553
+    sub_addr = f"tcp://{sub_ip}:{sub_port}"
 
+
+    dataserver = ZqmServer(ctx, pub_addr, sub_addr)
+
+    modelrunner = Modelrunner(None, Z_DIM)
     while True:
         sequences = dataserver.get_batch()
-
         if(sequences):
-            
-            for device, sequence in sequences.items():
+            outputs = modelrunner.run_step( sequences )
 
+            dataserver.set_output(outputs)
 
     # os.makedirs(modelroot, exist_ok = True) 
     # writer = SummaryWriter(log_dir = modelroot)
