@@ -73,9 +73,11 @@ class ZqmServer(DataServer):
                 sequence = []
                 for i in range(self.sequence_length):
                     sequence.append(buffer.get())
-                
+                    sequences[key] = np.asarray(sequence)
+            else:
+                print("No data")
 
-                sequences[key] = np.asarray(sequence)
+                
                 
         self._rcv_lock.release()
         return sequences

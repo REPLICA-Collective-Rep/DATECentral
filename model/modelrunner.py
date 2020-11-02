@@ -13,7 +13,7 @@ class Modelrunner():
 
         # self.fig, self.inputPlots, self.outputPlots = self.setup_plot()
 
-    def run_step(self, device, sequences):
+    def run_step(self, sequences):
         # if( self.n_iter % 50 == 0):
         #     print("Epoc: {:06d}-{:02d} Loss: {}".format(self.n_iter, self.name, self.losses[-1]))
         #     self.writer.add_scalar(f"Loss/train_{self.name}", self.losses[-1], self.n_iter)
@@ -26,6 +26,8 @@ class Modelrunner():
         for device, sequence in sequences.items():
             outputs[device] = (0.0, np.zeros(self.z_dim))
 
+        return outputs
+        
     # def setup_plot(self):
     #     fig = plt.figure()
 

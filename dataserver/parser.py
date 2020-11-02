@@ -5,7 +5,7 @@ import ctypes
 class SensorData(ctypes.Structure):
     _fields_ = (
         ('device'   , ctypes.c_int),
-        ('mscounter', ctypes.c_int),
+        ('mscounter', ctypes.c_double),
         ('raw'      , ctypes.c_float * 8)
     )
 

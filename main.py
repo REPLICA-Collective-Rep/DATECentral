@@ -18,14 +18,12 @@ def main(args):
 
     ctx = zmq.Context()
 
-    #xpub_ip   = "inanna.local"
-    #xpub_ip   = "0.0.0.0"
-    #pub_ip   = "192.168.8.118"
-    pub_ip   = "127.0.0.1"    
+    pub_ip   = "192.168.0.10"    
+    #pub_ip   = "192.0.0.1"    
     pub_port = 5554
     pub_addr = f"tcp://{pub_ip}:{pub_port}"
 
-    sub_ip   = "127.0.0.1"    
+    sub_ip   = "0.0.0.0"    
     sub_port = 5553
     sub_addr = f"tcp://{sub_ip}:{sub_port}"
 
@@ -37,7 +35,6 @@ def main(args):
         sequences = dataserver.get_batch()
         if(sequences):
             outputs = modelrunner.run_step( sequences )
-
             dataserver.set_output(outputs)
 
     # os.makedirs(modelroot, exist_ok = True) 
