@@ -74,8 +74,6 @@ class ZqmServer(DataServer):
                 for i in range(self.sequence_length):
                     sequence.append(buffer.get())
                     sequences[key] = np.asarray(sequence)
-            else:
-                print("No data")
 
                 
                 
@@ -93,7 +91,8 @@ class ZqmServer(DataServer):
             self._get_lock.release()
 
 
-    def set_output(self, batch):
-        for device, (loss, embedding) in batch.items():
+    def set_output(self, output):
+        for device, (loss, embedding) in output.items():
+
             msg = encodeOutput( device, loss, embedding)
             self.pub.send(msg)

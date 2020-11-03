@@ -3,13 +3,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-
-
 class LSTMAutoencoder(nn.Module):
-    def __init__(self, seq_len, n_features, embedding_dim):
+    def __init__(self, decoder):
         super(LSTMAutoencoder, self).__init__()
-        self.encoder = Encoder(seq_len, n_features, embedding_dim).cuda()
-        self.decoder = Decoder(seq_len, n_features, embedding_dim).cuda()
+        self.encoder = Encoder(
+          decoder.seq_len, 
+          decoder.n_features, 
+          decoder.embedding_dim).cuda()
+          
+        self.decoder = decoder
 
     def reparameterize(self, mu, logvar):
         std = logvar.mul(0.5).exp_()

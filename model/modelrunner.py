@@ -3,13 +3,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
+from pathlib import Path
+
 class Modelrunner():
 
-    def __init__(self, model, z_dim = 16 ):
+    def __init__(self, model_type, z_dim, load_latest = True ):
+        self.models_root = "models"
         self.z_dim = z_dim
+        self.load_latest = load_latest
+        self.model_type = model_type
 
-        models = {}
 
+        self.models = {}
+        self.encoder = None
+        self.decoder = None
+
+        last_session = self.getLastSession()
+        if(self.load_latest):
+            self.session = last_session
+        else:
+            self.session = last_session + 1
 
         # self.fig, self.inputPlots, self.outputPlots = self.setup_plot()
 
@@ -19,14 +32,28 @@ class Modelrunner():
         #     self.writer.add_scalar(f"Loss/train_{self.name}", self.losses[-1], self.n_iter)
         #     self.plot_graph(batch, self.output)
         #     self.writer.add_figure(f"Samples/train_{self.name}", self.fig, self.n_iter)
-
         outputs = {}
 
-        outputs[0] = (0.0, np.zeros(self.z_dim))
+        
         for device, sequence in sequences.items():
-            outputs[device] = (0.0, np.zeros(self.z_dim))
+            if( device not in self.models):
+                self.setupModel(device)                
+
+            outputs[device] =  self.models[device].train_step(sequence)
+
 
         return outputs
+
+    def setupModel(self, device):
+
+        path = Path(self.models_root, f"Session_{self.session:04d}", f"encoder_{device:02d}")
+        self.models[device] = self.model_type(device, path, self.z_dim)
+
+        if(self.load_latest and self.models[device].exists()):
+            self.models[device].load()
+
+    def getLastSession(self):
+        return 0
         
     # def setup_plot(self):
     #     fig = plt.figure()

@@ -2,6 +2,9 @@ import re
 import numpy as np
 import ctypes
 
+
+Z_DIM = 32
+
 class SensorData(ctypes.Structure):
     _fields_ = (
         ('device'   , ctypes.c_int),
@@ -13,7 +16,7 @@ class OutputData(ctypes.Structure):
     _fields_ = (
         ('device'   , ctypes.c_int),
         ('loss'     , ctypes.c_float),
-        ('embedding', ctypes.c_float * 16)
+        ('embedding', ctypes.c_float * 32)
     )
 
 def parseSensorData(reading, num_channels):
@@ -23,9 +26,10 @@ def parseSensorData(reading, num_channels):
 def encodeOutput(device, loss, embedding):
     data = embedding.astype(np.single)
 
-    Arr = ctypes.c_float * 16
+    Arr = ctypes.c_float * Z_DIM
     arr = Arr()
-    for i in range(16):
+    for i in range(Z_DIM):
+
         arr[i] = data[i]
 
     return OutputData(device, loss, arr)
