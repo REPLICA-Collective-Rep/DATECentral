@@ -3,9 +3,7 @@ import zmq
 import time
 
 from dataserver import ZqmServer
-from model      import Modelrunner, DumbyModel, LstmModel, ModelDef
-
-
+from model      import Modelrunner, ModelDef
 
 
 
@@ -30,7 +28,7 @@ def main(args):
 
 
     model_def = ModelDef(64, 8, 32)
-    modelrunner = Modelrunner(LstmModel, model_def)
+    modelrunner = Modelrunner(model_def)
 
 
     running = True
@@ -56,6 +54,9 @@ def main(args):
         except KeyboardInterrupt:            
             print("Clossing on interupt")
             running = False
+
+    if input("Save models? (y/n):\n") == 'y':
+        modelrunner.save_all()
 
 
 

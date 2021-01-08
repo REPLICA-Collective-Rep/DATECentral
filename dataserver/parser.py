@@ -16,7 +16,7 @@ class OutputData(ctypes.Structure):
     _fields_ = (
         ('device'   , ctypes.c_int),
         ('loss'     , ctypes.c_float),
-        ('embedding', ctypes.c_float * 32)
+        ('embedding', ctypes.c_float * Z_DIM )
     )
 
 def parseSensorData(reading, num_channels):
@@ -24,12 +24,12 @@ def parseSensorData(reading, num_channels):
     return sensorData.device, sensorData.mscounter, sensorData.raw
 
 def encodeOutput(device, loss, embedding):
-    data = embedding.astype(np.single)
+    data = embedding.astype(np.float)
 
     Arr = ctypes.c_float * Z_DIM
     arr = Arr()
     for i in range(Z_DIM):
-
         arr[i] = data[i]
 
-    return OutputData(device, loss, arr)
+    obj = OutputData(device, loss, arr)
+    return obj

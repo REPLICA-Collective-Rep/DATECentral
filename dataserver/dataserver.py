@@ -1,9 +1,18 @@
 import zmq
 import threading
+from datetime import datetime
 from queue import Queue
 import numpy as np
+import random
+from tqdm import tqdm
+from pathlib import Path
 
 from .parser import parseSensorData, encodeOutput
+
+from ctypes import *
+
+from collections import defaultdict
+
 
 class DataQueueDict(dict):
 
@@ -30,8 +39,76 @@ class DataServer():
 
 
 class FileServer(DataServer):
-    pass
+    def __init__(self, session_dirs = [], sequence_length = 64, num_channels = 8):
+        super().__init__(sequence_length, num_channels)
 
+        session_dirs = [ Path(f) for f in session_dirs]
+
+        self.data  = {}
+        self.stats = {}
+
+        recording_index = 0
+        for session_dir in session_dirs:
+
+            session = session_dir.stem
+            #session_time = datetime.strptime(session[:-4], "%Y-%m-%d-%H-%M-%S")
+
+
+            suit_data = defaultdict(dict)
+            for data_file in session_dir.glob("*.npy"):
+
+                suit     = int(data_file.stem.split('-')[0])
+                sample_n = int(data_file.stem.split('-')[1])
+
+                data = np.load(data_file, allow_pickle=True)
+                if data.shape[0] > 0 and data.shape[1] == 9:
+                    suit_data[suit][sample_n] = data
+                else:
+                    print(data.shape)
+                
+            suit_np_data = {}
+            for suit, data in suit_data.items():
+                data = [ d for k, d in sorted(data.items()) ]
+
+                data = list(data)
+                suit_np_data[suit] = np.concatenate(data, axis=0) 
+
+            for suit, data in suit_np_data.items():
+                stat = {
+                    'index'   : recording_index,
+                    'suit'    : suit,
+                    'session' : session,
+                    'samples' : data.shape[0]
+                }
+
+                print( stat )
+                self.stats[recording_index] = stat
+                self.data[recording_index] = data
+                recording_index += 1
+
+
+        
+        print(f"Loaded: {len(self.data)} Sessions")
+
+        # for stat in self.stats:
+        #     print(f"{}\t{}\t{}")
+        
+    def get_batch(self, sequence_length = None):
+        sequence = {}
+
+        if sequence_length is None:
+            sequence_length + self.sequence_length
+
+        for recording_index, data in self.data.items():
+            
+            if data.shape[0] > sequence_length:
+
+                srt = random.randint(0, data.shape[0] - sequence_length)
+                end = srt + sequence_length
+
+                sequence[recording_index] = data[srt:end,1:]
+
+        return sequence
 
 
 class ZqmServer(DataServer):
