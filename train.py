@@ -6,7 +6,9 @@ from model      import Modelrunner, ModelDef
 
 def main(args):
 
-    dataserver = FileServer()
+    dataserver = FileServer(
+        session_dirs=["data/good/2020-11-12-09-36-01-591"]
+    )
 
 
     model_def = ModelDef(64, 8, 32)

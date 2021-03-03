@@ -1,6 +1,8 @@
 import zmq
 import threading
 from datetime import datetime
+from datetime import timedelta
+
 from queue import Queue
 import numpy as np
 import random
@@ -74,11 +76,15 @@ class FileServer(DataServer):
                 suit_np_data[suit] = np.concatenate(data, axis=0) 
 
             for suit, data in suit_np_data.items():
+
+                time = timedelta(seconds=(data.shape[0] / 25))
+
                 stat = {
                     'index'   : recording_index,
                     'suit'    : suit,
                     'session' : session,
-                    'samples' : data.shape[0]
+                    'samples' : data.shape[0],
+                    'time'    : str(time)
                 }
 
                 print( stat )
@@ -97,7 +103,7 @@ class FileServer(DataServer):
         sequence = {}
 
         if sequence_length is None:
-            sequence_length + self.sequence_length
+            sequence_length = self.sequence_length
 
         for recording_index, data in self.data.items():
             
@@ -110,6 +116,31 @@ class FileServer(DataServer):
 
         return sequence
 
+    def get_batches(self, sequence_length = None):
+        sequences = {}
+
+        if sequence_length is None:
+            sequence_length = self.sequence_length
+
+        for recording_index, data in self.data.items():
+
+            srt = 0
+            end = srt + sequence_length      
+            sequence = []
+
+            while data.shape[0] > end:
+                sequence.append(data[srt:end,1:])
+                srt += sequence_length
+                end += sequence_length
+
+
+            if( len(sequence) > 0):
+                sequences[recording_index] = np.stack(sequence, axis=1)
+                print(f"Got batches: recording {recording_index} ({sequences[recording_index].shape})")
+            else:
+                print(f"Failed to get batches: {recording_index}") 
+
+        return sequences
 
 class ZqmServer(DataServer):
 

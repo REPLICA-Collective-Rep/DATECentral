@@ -32,7 +32,7 @@ class Model:
             checkpoint = torch.load(self.path) 
             self.model.load_state_dict(checkpoint)
             self.model.eval()
-
+            print(f"Loaded {self.path}")
         else:
             print(f"No model to load {self.path}")
 

@@ -100,6 +100,47 @@ class Modelrunner():
 
         return outputs
 
+
+    def evaluate(self, sequences):
+        outputs = {}
+        meta_outputs = {}
+
+        decoder = self.decoder
+        metaencoder = self.metaencoder
+
+        for device, sequence in sequences.items():
+
+            batch_t = torch.from_numpy(sequence.astype(np.float32)).cuda()
+
+
+            if(batch_t.ndim == 2):
+                batch_t = batch_t.reshape(
+                    (self.model_def.sequence_length, 1,  self.model_def.num_channels)
+                )
+
+            if( device not in self.encoders): 
+                self.encoders[device] = self.setupEncoder(f"encoder_{device:02d}")    
+
+            encoder = self.encoders[device]
+
+            # Encoder
+            loss, z = self.run_model(encoder, decoder, batch_t)
+
+            z = z.squeeze().detach().cpu().numpy()
+            loss = loss.item()
+            outputs[device] = (loss, z)
+
+
+            # Metaencoder
+            meta_loss, meta_z = self.run_model(metaencoder, decoder, batch_t)
+
+            meta_z = meta_z.squeeze().detach().cpu().numpy()
+            meta_loss = meta_loss.item()
+            meta_outputs[device] = (loss, meta_loss, meta_z)              
+
+
+        return outputs, meta_outputs
+
     def run_model(self, encoder, decoder, batch_t):
         mu, logvar =  encoder.model(batch_t)
         z = self.reparameterize(mu, logvar)
