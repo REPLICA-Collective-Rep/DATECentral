@@ -1,21 +1,21 @@
-import argparse
-import time
-
 from dataserver import FileServer
 from model      import Modelrunner, ModelDef
+
+import argparse
+import time
+import numpy as np
+from collections import defaultdict
+from pathlib import Path, PurePath
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter,
                                AutoMinorLocator)
-
-import numpy as np
-from collections import defaultdict
-from pathlib import Path, PurePath
 plt.style.use('figures/date.mplstyle')
+
 
 list_dict = defaultdict(lambda: np.array([]))
 
-#ffmpeg -framerate 2 -i figures/training/frames/frame_%d.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p figures/training/out.mp4
+#ffmpeg -framerate 2 -i figures/training/frames/frame_%d.png -c:v libx264 -vf fps=30 -pix_fmt yuv420p figures/training/out.mp4
 
 DPI = 150
 SIZE = (1920 / DPI, 1080 / DPI)
@@ -70,7 +70,7 @@ class SummaryPlotter:
                     pass
                     #plt.xlabel('samples', fontsize=6)
 
-                for i in range(width*r*2):
+                for _ in range(width*r*2):
                     rec_ax._get_lines.get_next_color()
 
                 rec_ax.plot(orig[:,r])

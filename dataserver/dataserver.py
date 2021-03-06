@@ -67,6 +67,7 @@ class FileServer(DataServer):
                     suit_data[suit][sample_n] = data
                 else:
                     print(data.shape)
+                    raise
                 
             suit_np_data = {}
             for suit, data in suit_data.items():
