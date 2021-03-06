@@ -5,8 +5,6 @@ import time
 
 import datastream as ds
 
-
-
 SEQ_LEN      = 64
 N_FEATURES   = 8
 Z_DIM        = 32

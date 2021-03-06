@@ -98,49 +98,57 @@ class FileServer(DataServer):
 
         # for stat in self.stats:
         #     print(f"{}\t{}\t{}")
+
+    def get_batch(self):
+        return self.get_random_batch()
         
-    def get_batch(self, sequence_length = None):
-        sequence = {}
+    def get_random_batch(self, sequence_length = None, batch_size = 1 ):
+        batches = {}
 
         if sequence_length is None:
             sequence_length = self.sequence_length
 
         for recording_index, data in self.data.items():
-            
+            sequences = [ ]        
             if data.shape[0] > sequence_length:
+                for bi in range(batch_size):
 
-                srt = random.randint(0, data.shape[0] - sequence_length)
-                end = srt + sequence_length
+                    srt = random.randint(0, data.shape[0] - sequence_length)
+                    end = srt + sequence_length
 
-                sequence[recording_index] = data[srt:end,1:]
+                    sequences.append(data[srt:end,1:])
 
-        return sequence
-
-    def get_batches(self, sequence_length = None):
-        sequences = {}
-
-        if sequence_length is None:
-            sequence_length = self.sequence_length
-
-        for recording_index, data in self.data.items():
-
-            srt = 0
-            end = srt + sequence_length      
-            sequence = []
-
-            while data.shape[0] > end:
-                sequence.append(data[srt:end,1:])
-                srt += sequence_length
-                end += sequence_length
-
-
-            if( len(sequence) > 0):
-                sequences[recording_index] = np.stack(sequence, axis=1)
-                print(f"Got batches: recording {recording_index} ({sequences[recording_index].shape})")
+                batches[recording_index] = np.stack(sequences, axis=1)
             else:
-                print(f"Failed to get batches: {recording_index}") 
+                print("Sequence length too long")
 
-        return sequences
+        return batches
+
+    # def get_batches(self, sequence_length = None, batch_size = 20 ):
+    #     sequences = {}
+
+    #     if sequence_length is None:
+    #         sequence_length = self.sequence_length
+
+    #     for recording_index, data in self.data.items():
+
+    #         srt = 0
+    #         end = srt + sequence_length      
+    #         sequence = []
+
+    #         while data.shape[0] > end:
+    #             sequence.append(data[srt:end,1:])
+    #             srt += sequence_length
+    #             end += sequence_length
+
+
+    #         if( len(sequence) > 0):
+    #             sequences[recording_index] = np.stack(sequence, axis=1)
+    #             print(f"Got batches: recording {recording_index} ({sequences[recording_index].shape})")
+    #         else:
+    #             print(f"Failed to get batches: {recording_index}") 
+
+    #     return sequences
 
 class ZqmServer(DataServer):
 

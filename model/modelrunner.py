@@ -75,12 +75,12 @@ class Modelrunner():
 
                 # Encoder
                 encoder.zero_grad() 
-                loss, z = self.run_model(encoder, decoder, batch_t)
+                loss, z, _ = self.run_model(encoder, decoder, batch_t)
                 loss.backward()
                 encoder.optimizer.step()
 
                 # Metaencoder
-                meta_loss, _ = self.run_model(metaencoder, decoder, batch_t)
+                meta_loss, _, _ = self.run_model(metaencoder, decoder, batch_t)
                 meta_loss.backward()
 
                 z = z.squeeze().detach().cpu().numpy()
@@ -89,7 +89,7 @@ class Modelrunner():
 
             else:
                 # Metaencoder
-                meta_loss, meta_z = self.run_model(metaencoder, decoder, batch_t)
+                meta_loss, meta_z, _ = self.run_model(metaencoder, decoder, batch_t)
                 meta_loss.backward()
 
                 loss = meta_loss.item()
@@ -124,15 +124,17 @@ class Modelrunner():
             encoder = self.encoders[device]
 
             # Encoder
-            loss, z = self.run_model(encoder, decoder, batch_t)
+            loss, z, output = self.run_model(encoder, decoder, batch_t)
 
             z = z.squeeze().detach().cpu().numpy()
+            output = output.squeeze().detach().cpu().numpy()
             loss = loss.item()
-            outputs[device] = (loss, z)
+
+            outputs[device] = (loss, z, output)
 
 
             # Metaencoder
-            meta_loss, meta_z = self.run_model(metaencoder, decoder, batch_t)
+            meta_loss, meta_z, _ = self.run_model(metaencoder, decoder, batch_t)
 
             meta_z = meta_z.squeeze().detach().cpu().numpy()
             meta_loss = meta_loss.item()
@@ -149,7 +151,7 @@ class Modelrunner():
 
         loss = self.loss_function(output, batch_t)
 
-        return loss, z
+        return loss, z, output
 
     def reparameterize(self, mu, logvar):
         std = logvar.mul(0.5).exp_()

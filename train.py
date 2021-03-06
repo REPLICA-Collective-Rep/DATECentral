@@ -4,40 +4,130 @@ import time
 from dataserver import FileServer
 from model      import Modelrunner, ModelDef
 
+import matplotlib.pyplot as plt
+from matplotlib.ticker import (MultipleLocator, FormatStrFormatter,
+                               AutoMinorLocator)
+
+import numpy as np
+from collections import defaultdict
+from pathlib import Path, PurePath
+plt.style.use('figures/date.mplstyle')
+
+list_dict = defaultdict(lambda: np.array([]))
+
+#ffmpeg -framerate 2 -i figures/training/frames/frame_%d.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p figures/training/out.mp4
+
+DPI = 150
+SIZE = (1920 / DPI, 1080 / DPI)
+
+class SummaryPlotter:
+
+    def __init__(self):
+        self.losses = list_dict
+        self.output_dir = Path("figures/training/frames")
+        self.output_dir.mkdir(parents = True, exist_ok = True)
+
+
+    def plot_summary(self, epoch, outputs, eval_sequences, eval_outputs):
+        width  = 6
+        top    = 4
+        bottom = 8
+
+        fig = plt.figure(figsize=SIZE, dpi=DPI)
+
+
+        gs = fig.add_gridspec(top + bottom ,width)
+
+        loss_ax = fig.add_subplot(gs[0:top, :])
+        loss_ax.autoscale(enable=True, axis='both', tight=True)
+        for device, (loss, _) in outputs.items():
+            print(f"\t{device:04d}: {loss:0.3f}")
+            self.losses[device] = np.append(self.losses[device], loss)
+
+        loss_ax.xaxis.set_minor_locator(MultipleLocator(1))
+        loss_ax.xaxis.set_minor_formatter(FormatStrFormatter('%d'))   
+        loss_ax.xaxis.set_major_locator(MultipleLocator(50))
+        loss_ax.xaxis.set_major_formatter(FormatStrFormatter('%d'))   
+
+        for device, losses in self.losses.items():
+            loss_ax.plot(np.arange(1, len(losses) + 1), losses,  label = f"{device}")
+
+
+        for c in range(width):
+
+            for r in range(8):
+                rec_ax = fig.add_subplot(gs[top + r, c])
+
+                _, _, eval_output =  eval_outputs[c]
+                eval_output = eval_output.squeeze()
+                orig = eval_sequences[c].squeeze()
+
+                rec_ax.xaxis.set_major_locator(MultipleLocator(32))
+                rec_ax.xaxis.set_major_formatter(FormatStrFormatter('%d'))   
+                if( r != 7):
+                    rec_ax.set_xticklabels([])
+                else:
+                    pass
+                    #plt.xlabel('samples', fontsize=6)
+
+                for i in range(width*r*2):
+                    rec_ax._get_lines.get_next_color()
+
+                rec_ax.plot(orig[:,r])
+                rec_ax.plot(np.arange(1, 65), eval_output[:,r])
+                rec_ax.set_ylim([0,1])
+
+        fig.savefig(PurePath(self.output_dir, f"frame_{epoch}.png"))
+
+
 def main(args):
 
     dataserver = FileServer(
-        session_dirs=["data/good/2020-11-12-09-36-01-591"]
+        session_dirs=[
+            "data/good/2020-11-12-09-36-01-591",
+            "data/good/2020-11-10-08-54-03-947"
+            ]
     )
-
 
     model_def = ModelDef(64, 8, 32)
     modelrunner = Modelrunner(model_def, load_latest=True)
 
+    eval_sequences = dataserver.get_random_batch(batch_size = 1 )
+    summary = SummaryPlotter()
 
-    running = True
-    counter = 0
-    while(running):
-        try:
-            sequences = dataserver.get_batch()
-            if(sequences):
+    batch_size = 20
 
-                print(f"----- Train step {counter}")
+    training = True
+    epoch_length = 1
+    epoch = 0
+    while(training):
 
-                outputs = modelrunner.run_step( sequences )
-
-                for device, (loss, embedding) in outputs.items():
-                    print(f"{device}: {loss}")
-
-
-                counter += 1
+        print(f"----- Epoch {epoch}")
+        for _ in range(epoch_length):
+            try:
+                sequences = dataserver.get_random_batch(batch_size = batch_size )
                 
+                
+                if(sequences):
+                    outputs = modelrunner.run_step( sequences )     
 
-        except KeyboardInterrupt:            
-            print("Clossing on interupt")
-            running = False
+            except KeyboardInterrupt:            
+                print("Clossing on interupt")
+                training = False
+                break
+  
 
-    modelrunner.save_all()
+        for device, (loss, _) in outputs.items():
+            print(f"\t{device:04d}: {loss:0.3f}")   
+        
+        eval_outputs, eval_meta_outputs = modelrunner.evaluate( eval_sequences ) 
+
+        summary.plot_summary(epoch, outputs, eval_sequences, eval_outputs)
+
+        epoch += 1
+
+    #modelrunner.save_all()
+    
 
 
 if __name__ == "__main__":
