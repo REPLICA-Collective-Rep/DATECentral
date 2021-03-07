@@ -6,12 +6,13 @@ import time
 import numpy as np
 from collections import defaultdict
 from pathlib import Path, PurePath
-
+import multiprocessing as mp
 import matplotlib.pyplot as plt
 from matplotlib.ticker import (MultipleLocator, FormatStrFormatter,
                                AutoMinorLocator)
 plt.style.use('figures/date.mplstyle')
 
+import gc; 
 
 list_dict = defaultdict(lambda: np.array([]))
 
@@ -24,7 +25,7 @@ class SummaryPlotter:
 
     def __init__(self):
         self.losses = list_dict
-        self.output_dir = Path("figures/training/frames")
+        self.output_dir = Path("figures/training/frames3")
         self.output_dir.mkdir(parents = True, exist_ok = True)
 
 
@@ -34,7 +35,7 @@ class SummaryPlotter:
         bottom = 8
 
         fig = plt.figure(figsize=SIZE, dpi=DPI)
-
+        
 
         gs = fig.add_gridspec(top + bottom ,width)
 
@@ -62,13 +63,15 @@ class SummaryPlotter:
                 eval_output = eval_output.squeeze()
                 orig = eval_sequences[c].squeeze()
 
-                rec_ax.xaxis.set_major_locator(MultipleLocator(32))
-                rec_ax.xaxis.set_major_formatter(FormatStrFormatter('%d'))   
-                if( r != 7):
-                    rec_ax.set_xticklabels([])
+
+                if( r == 7):
+
+                    rec_ax.xaxis.set_major_locator(MultipleLocator(32))
+                    rec_ax.xaxis.set_major_formatter(FormatStrFormatter('%d')) 
                 else:
-                    pass
-                    #plt.xlabel('samples', fontsize=6)
+                    rec_ax.xaxis.set_visible(False)
+                    rec_ax.spines['bottom'].set_visible(False)
+                    rec_ax.set_xticklabels([])
 
                 for _ in range(width*r*2):
                     rec_ax._get_lines.get_next_color()
@@ -78,6 +81,8 @@ class SummaryPlotter:
                 rec_ax.set_ylim([0,1])
 
         fig.savefig(PurePath(self.output_dir, f"frame_{epoch}.png"))
+        plt.close('all')
+        gc.collect()
 
 
 def main(args):
@@ -111,22 +116,28 @@ def main(args):
                 if(sequences):
                     outputs = modelrunner.run_step( sequences )     
 
+                for device, (loss, _) in outputs.items():
+                    print(f"\t{device:04d}: {loss:0.3f}")   
+                
+                eval_outputs, eval_meta_outputs = modelrunner.evaluate( eval_sequences ) 
+
+
+                proc=mp.Process(target=summary.plot_summary(epoch, outputs, eval_sequences, eval_outputs))
+                proc.daemon=True
+                proc.start()
+                proc.join()
+                modelrunner.save_all()
+
+                epoch += 1
+
             except KeyboardInterrupt:            
                 print("Clossing on interupt")
                 training = False
                 break
   
 
-        for device, (loss, _) in outputs.items():
-            print(f"\t{device:04d}: {loss:0.3f}")   
-        
-        eval_outputs, eval_meta_outputs = modelrunner.evaluate( eval_sequences ) 
 
-        summary.plot_summary(epoch, outputs, eval_sequences, eval_outputs)
-
-        epoch += 1
-
-    #modelrunner.save_all()
+    modelrunner.save_all()
     
 
 

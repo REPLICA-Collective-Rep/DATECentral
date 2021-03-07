@@ -32,19 +32,18 @@ DPI = 150
 SIZE = (1920 / DPI, 1080 / DPI)
 WINDOW = 2000
 
-TIME_CONVERSION = 40e-3
-STEP   =  floor(( 1 / 30 ) / TIME_CONVERSION) * 20
-
 output_dir = PurePath("figures/raw_data")
 
 session_dirs = [ os.path.join("data/good", f) for f in names ]
 dataserver = FileServer( session_dirs = session_dirs)
 
 
-#ffmpeg -framerate 30 -i figures/raw_data/frames_0/frame_%d.png -r 30 -c:v libx264  -pix_fmt yuv420p figures/raw_data/out_0.mp4
+#ffmpeg -framerate 25 -i figures/raw_data/frames_0/frame_%d.png -r 30 -c:v libx264  -pix_fmt yuv420p figures/raw_data/out_0.mp4
 
 
 for index, sequence in dataserver.data.items():
+
+    fig, axs = plt.subplots(8, 1, figsize=SIZE, dpi=DPI)
 
     frame_dir = Path(output_dir.joinpath(f"frames_{index}"))
     frame_dir.mkdir(parents = True, exist_ok = True)
@@ -53,10 +52,7 @@ for index, sequence in dataserver.data.items():
     end = srt + WINDOW
     frame_num = 0
 
-    while( end < len(sequence)):
-        
-        plt.close()
-        fig, axs = plt.subplots(8, 1, figsize=SIZE, dpi=DPI)
+    while( end < len(sequence)):    
 
         for ch in range(8):
             try:
@@ -96,6 +92,6 @@ for index, sequence in dataserver.data.items():
         print(f"Saving {path}")
 
 
-        srt += STEP
-        end += STEP
+        srt += 1
+        end += 1
         frame_num += 1
