@@ -30,7 +30,7 @@ class LSTMAutoencoder(nn.Module):
 
 class Encoder(nn.Module):
 
-  def __init__(self, seq_len, n_features, embedding_dim, layers = 1):
+  def __init__(self, seq_len, n_features, embedding_dim, layers = 3 ):
     super(Encoder, self).__init__()
 
     self.seq_len    = seq_len

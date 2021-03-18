@@ -25,7 +25,7 @@ class SummaryPlotter:
 
     def __init__(self):
         self.losses = list_dict
-        self.output_dir = Path("figures/training/frames3")
+        self.output_dir = Path("figures/training/frames4")
         self.output_dir.mkdir(parents = True, exist_ok = True)
 
 
@@ -36,51 +36,57 @@ class SummaryPlotter:
 
         fig = plt.figure(figsize=SIZE, dpi=DPI)
         
-
         gs = fig.add_gridspec(top + bottom ,width)
 
-        loss_ax = fig.add_subplot(gs[0:top, :])
-        loss_ax.autoscale(enable=True, axis='both', tight=True)
-        for device, (loss, _) in outputs.items():
-            print(f"\t{device:04d}: {loss:0.3f}")
-            self.losses[device] = np.append(self.losses[device], loss)
+ 
+        with open("figures/training/log.txt", 'a') as f:
+            f.write(f'{epoch}')
+            for device, (loss, _) in outputs.items():
+                f.write(f'\t{device}\t{loss}')
+                self.losses[device] = np.append(self.losses[device], loss)
 
-        loss_ax.xaxis.set_minor_locator(MultipleLocator(1))
-        loss_ax.xaxis.set_minor_formatter(FormatStrFormatter('%d'))   
-        loss_ax.xaxis.set_major_locator(MultipleLocator(50))
-        loss_ax.xaxis.set_major_formatter(FormatStrFormatter('%d'))   
+            loss_ax = fig.add_subplot(gs[0:top, :])
+            loss_ax.autoscale(enable=True, axis='both', tight=True)
 
-        for device, losses in self.losses.items():
-            loss_ax.plot(np.arange(1, len(losses) + 1), losses,  label = f"{device}")
+            loss_ax.xaxis.set_minor_locator(MultipleLocator(1))
+            loss_ax.xaxis.set_minor_formatter(FormatStrFormatter('%d'))   
+            loss_ax.xaxis.set_major_locator(MultipleLocator(50))
+            loss_ax.xaxis.set_major_formatter(FormatStrFormatter('%d'))   
 
-
-        for c in range(width):
-
-            for r in range(8):
-                rec_ax = fig.add_subplot(gs[top + r, c])
-
-                _, _, eval_output =  eval_outputs[c]
-                eval_output = eval_output.squeeze()
-                orig = eval_sequences[c].squeeze()
+            for device, losses in self.losses.items():
+                loss_ax.plot(np.arange(1, len(losses) + 1), losses,  label = f"{device}")
 
 
-                if( r == 7):
+            for c in range(width):
 
-                    rec_ax.xaxis.set_major_locator(MultipleLocator(32))
-                    rec_ax.xaxis.set_major_formatter(FormatStrFormatter('%d')) 
-                else:
-                    rec_ax.xaxis.set_visible(False)
-                    rec_ax.spines['bottom'].set_visible(False)
-                    rec_ax.set_xticklabels([])
+                for r in range(8):
+                    rec_ax = fig.add_subplot(gs[top + r, c])
 
-                for _ in range(width*r*2):
-                    rec_ax._get_lines.get_next_color()
+                    _, _, eval_output =  eval_outputs[c]
+                    eval_output = eval_output.squeeze()
+                    orig = eval_sequences[c].squeeze()
 
-                rec_ax.plot(orig[:,r])
-                rec_ax.plot(np.arange(1, 65), eval_output[:,r])
-                rec_ax.set_ylim([0,1])
+
+                    if( r == 7):
+
+                        rec_ax.xaxis.set_major_locator(MultipleLocator(32))
+                        rec_ax.xaxis.set_major_formatter(FormatStrFormatter('%d')) 
+                    else:
+                        rec_ax.xaxis.set_visible(False)
+                        rec_ax.spines['bottom'].set_visible(False)
+                        rec_ax.set_xticklabels([])
+
+                    for _ in range(width*r*2):
+                        rec_ax._get_lines.get_next_color()
+
+                    rec_ax.plot(orig[:,r])
+                    rec_ax.plot(np.arange(1, 65), eval_output[:,r])
+                    rec_ax.set_ylim([0,1])
+
+            f.write(f'{epoch}')
 
         fig.savefig(PurePath(self.output_dir, f"frame_{epoch}.png"))
+
         plt.close('all')
         gc.collect()
 
@@ -121,13 +127,13 @@ def main(args):
                 
                 eval_outputs, eval_meta_outputs = modelrunner.evaluate( eval_sequences ) 
 
-
                 proc=mp.Process(target=summary.plot_summary(epoch, outputs, eval_sequences, eval_outputs))
                 proc.daemon=True
                 proc.start()
-                proc.join()
+
                 modelrunner.save_all()
 
+                proc.join()
                 epoch += 1
 
             except KeyboardInterrupt:            
