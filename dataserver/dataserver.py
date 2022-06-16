@@ -197,15 +197,21 @@ class ZqmServer(DataServer):
         self._rcv_lock.release()
         return sequences
 
+    def stop(self):
+        print("Stoping datserver")
+        self.running = False    
+        self.thread.join()
+
 
     def receive_loop(self):
         while(self.running):
 
             message = self.sub.recv()
             device, _, data = parseSensorData(message, self.num_channels )
-            self._rcv_lock.acquire()
-            self.buffers[device].put(data)
-            self._get_lock.release()
+
+            if self._rcv_lock.acquire(timeout= 1.0):
+                self.buffers[device].put(data)
+                self._get_lock.release()
 
 
     def set_output(self, output):

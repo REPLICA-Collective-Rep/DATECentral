@@ -55,10 +55,14 @@ def main(args):
             print("Clossing on interupt")
             running = False
 
+
+    
+
     if input("Save models? (y/n):\n") == 'y':
         modelrunner.save_all()
 
 
+    dataserver.stop()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process some integers.')
